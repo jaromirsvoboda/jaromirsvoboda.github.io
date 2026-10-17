@@ -14,6 +14,8 @@ written with LLMs (Claude and others) and reviewed by me. Served at
   builds and deploys the site.
 - `scripts/build [<out dir>]` builds the site locally (default `_site/`).
 
+Needs python3 and gitleaks; local builds also need pandoc.
+
 ## Leak scan
 
 Anything pushed here stays in public history, so content is scanned before it
