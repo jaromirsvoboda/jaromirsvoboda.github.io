@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Build the site from site/ into $1 (default _site/): copy everything, then render each
+# Markdown file and Jupyter notebook to an HTML page beside it (the .ipynb stays for download).
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+out=${1:-$root/_site}
+
+rm -rf "$out"
+cp -r "$root/site" "$out"
+rm -f "$out/.gitkeep"
+
+find "$out" -type f \( -name '*.md' -o -name '*.ipynb' \) -print0 |
+while IFS= read -r -d '' src; do
+  html=${src%.*}.html
+  pandoc "$src" --standalone --math-method=mathml --shift-heading-level-by=-1 \
+    --lua-filter="$root/scripts/md-links.lua" -o "$html"
+  case $src in *.md) rm "$src" ;; esac
+  echo "built ${html#"$out"/}"
+done

@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Fail if any text file under the given paths (default: site/) matches a leak pattern.
+
+Patterns come from scripts/leak-patterns (public, generic) and a private list kept
+outside this repo: $LEAK_PATTERNS_FILE, by default the vault copy. In CI the private
+list is written from the LEAK_PATTERNS secret. One Python regex per line, matched
+case-insensitively; blank lines and lines starting with # are ignored.
+Then runs gitleaks over the same paths for credentials.
+"""
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+PRIVATE = Path(os.environ.get(
+    "LEAK_PATTERNS_FILE",
+    Path.home() / "vault/dotfiles/shareables/leak-patterns.txt"))
+
+
+def load(path):
+    lines = [l.strip() for l in path.read_text().splitlines()]
+    return [re.compile(l, re.IGNORECASE) for l in lines if l and not l.startswith("#")]
+
+
+def text_files(paths):
+    for p in paths:
+        if p.is_file():
+            yield p
+        else:
+            yield from (f for f in sorted(p.rglob("*")) if f.is_file())
+
+
+def main():
+    paths = [Path(a) for a in sys.argv[1:]] or [ROOT / "site"]
+    if not PRIVATE.is_file():
+        sys.exit(f"leak-scan: private pattern list missing: {PRIVATE}")
+    private = load(PRIVATE)
+    if not private:
+        sys.exit(f"leak-scan: private pattern list is empty: {PRIVATE}")
+    patterns = load(ROOT / "scripts/leak-patterns") + private
+
+    hits = 0
+    for f in text_files(paths):
+        data = f.read_bytes()
+        if b"\0" in data[:8192]:
+            continue  # binary
+        for n, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
+            for rx in patterns:
+                m = rx.search(line)
+                if m:
+                    hits += 1
+                    print(f"{f}:{n}: {m.group(0)!r}  (pattern {rx.pattern!r})")
+
+    if shutil.which("gitleaks") is None:
+        sys.exit("leak-scan: gitleaks not installed")
+    for p in paths:
+        r = subprocess.run(["gitleaks", "dir", "--no-banner", "--redact", "--log-level", "warn", "--verbose", str(p)])
+        if r.returncode:
+            hits += 1
+
+    if hits:
+        sys.exit("leak-scan: FAILED; nothing may be published")
+    print("leak-scan: clean")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Last local gate before content becomes public history: scan everything in site/.
+# Enable once per clone: git config core.hooksPath .githooks
+exec "$(git rev-parse --show-toplevel)/scripts/leak-scan"

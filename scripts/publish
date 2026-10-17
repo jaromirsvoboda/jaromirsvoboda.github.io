@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Copy a file or folder into site/, after it passes the leak scan, then commit and push.
+#   scripts/publish [--no-push] <source> [<path under site/>]
+# The destination defaults to the source's name; an existing one is replaced.
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+
+push=1
+if [ "${1-}" = --no-push ]; then push=0; shift; fi
+[ $# -ge 1 ] && [ $# -le 2 ] || { sed -n '2,4p' "$0" >&2; exit 2; }
+src=${1%/}
+dest=${2:-$(basename "$src")}
+dest=${dest#/}
+[ -e "$src" ] || { echo "publish: no such file: $src" >&2; exit 2; }
+case $dest in ..*|*/../*|*/..) echo "publish: destination must stay inside site/" >&2; exit 2 ;; esac
+
+# Scan the source before anything enters the repo: once pushed, it stays in public history.
+"$root/scripts/leak-scan" "$src"
+
+target=$root/site/$dest
+mkdir -p "$(dirname "$target")"
+rm -rf "$target"
+cp -r "$src" "$target"
+
+git -C "$root" add -A -- "site/$dest"
+if git -C "$root" diff --cached --quiet; then
+  echo "publish: site/$dest unchanged"; exit 0
+fi
+git -C "$root" commit -q -m "Publish $dest"
+echo "publish: committed site/$dest"
+if [ $push = 1 ]; then git -C "$root" push -q && echo "publish: pushed; live in a minute or two"; fi
