@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Build the site from site/ into $1 (default _site/): copy everything, then render each
 # Markdown file and Jupyter notebook to an HTML page beside it (the .ipynb stays for download).
+# Files under a download/ folder are served as is, so a document can offer its own source.
+# library/index.html is generated from the front matter of library/*/index.md.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 out=${1:-$root/_site}
@@ -9,10 +11,32 @@ rm -rf "$out"
 cp -r "$root/site" "$out"
 rm -f "$out/.gitkeep"
 
-find "$out" -type f \( -name '*.md' -o -name '*.ipynb' \) -print0 |
+# Library index: one entry per library/<slug>/index.md, newest first.
+if [ -d "$out/library" ]; then
+  meta=$(mktemp)
+  printf '%s' '$date$	$title$	$summary$' > "$meta"
+  {
+    printf -- '---\ntitle: Library\npagetitle: Library\ncrumbs:\n  href: ../index.html\n  label: Home\n---\n\n'
+    printf 'Longer documents: study guides, digests and preparation notes, each readable here and downloadable as EPUB, PDF or Markdown.\n\n'
+    printf '<ul class="library">\n'
+    for doc in "$out"/library/*/index.md; do
+      [ -e "$doc" ] || continue
+      slug=$(basename "$(dirname "$doc")")
+      IFS=$'\t' read -r date title summary < <(pandoc "$doc" -t plain --template="$meta" | tr '\n' ' ' | sed 's/ *$//'; echo)
+      printf '%s\t<li><a href="%s/index.html"><strong>%s</strong></a> <span class="date">· %s</span><span class="summary">%s</span></li>\n' \
+        "$date" "$slug" "$title" "$date" "$summary"
+    done | sort -r | cut -f2-
+    printf '</ul>\n'
+  } > "$out/library/index.md"
+  rm -f "$meta"
+fi
+
+find "$out" -type f \( -name '*.md' -o -name '*.ipynb' \) -not -path '*/download/*' -print0 |
 while IFS= read -r -d '' src; do
   html=${src%.*}.html
   pandoc "$src" --standalone --math-method=mathml --shift-heading-level-by=-1 \
+    --template="$root/scripts/template.html" --toc --toc-depth=2 \
+    --metadata=site-title:"Jaromír Svoboda" \
     --lua-filter="$root/scripts/md-links.lua" -o "$html"
   case $src in *.md) rm "$src" ;; esac
   echo "built ${html#"$out"/}"

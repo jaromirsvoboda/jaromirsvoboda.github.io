@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="$if(lang)$$lang$$else$en$endif$">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+$if(author)$<meta name="author" content="$for(author)$$author$$sep$; $endfor$">$endif$
+$if(summary)$<meta name="description" content="$summary$">$endif$
+<title>$pagetitle$$if(site-title)$ · $site-title$$endif$</title>
+<style>
+:root { --fg: #1f2328; --muted: #59636e; --bg: #fdfcf9; --line: #d8dee4; --accent: #0b5cad; --box: #f3f1ea; }
+@media (prefers-color-scheme: dark) {
+  :root { --fg: #e6e6e6; --muted: #a0a7ae; --bg: #1c1d1f; --line: #3a3d41; --accent: #7cb7ff; --box: #26282b; }
+  img { background: #fff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+       font: 18px/1.62 Georgia, "Libertinus Serif", "Noto Serif", serif; }
+main { max-width: 44rem; margin: 0 auto; padding: 1.5rem 16px 4rem; }
+nav.crumbs { font: 15px/1.4 system-ui, sans-serif; color: var(--muted); margin-bottom: 1.5rem; }
+nav.crumbs a { color: var(--muted); }
+h1, h2, h3, h4 { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.25; }
+h1.title { font-size: 2.1rem; margin: 0 0 .3rem; }
+p.meta { font: 15px/1.5 system-ui, sans-serif; color: var(--muted); margin: 0 0 1.2rem; }
+h1 { font-size: 1.75rem; margin-top: 2.6rem; border-bottom: 1px solid var(--line); padding-bottom: .2rem; }
+h2 { font-size: 1.35rem; margin-top: 2rem; }
+h3 { font-size: 1.1rem; }
+a { color: var(--accent); }
+blockquote { margin: 1rem 0; padding: .2rem 1rem; border-left: 4px solid var(--line); color: var(--muted); font-style: italic; }
+table { border-collapse: collapse; width: 100%; font-size: .85em; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: .35rem .5rem; vertical-align: top; text-align: left; }
+th { background: var(--box); }
+figure { margin: 1.6rem 0; }
+figure img, p > img { display: block; max-width: 100%; max-height: 85vh; height: auto; margin: 0 auto; }
+figcaption { font-size: .9em; color: var(--muted); font-style: italic; margin-top: .5rem; }
+code { font-size: .9em; }
+.downloads { background: var(--box); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; margin: 0 0 1.8rem;
+             font: 15px/1.5 system-ui, sans-serif; }
+.downloads strong { display: block; margin-bottom: .3rem; }
+.downloads a { display: inline-block; margin: .15rem 1.2rem .15rem 0; }
+nav#TOC { font: 15px/1.5 system-ui, sans-serif; background: var(--box); border-radius: 8px; padding: .6rem 1rem; margin-bottom: 2rem; }
+nav#TOC ul { padding-left: 1.2rem; margin: .2rem 0; }
+nav#TOC > ul { padding-left: .4rem; list-style: none; }
+ul.library { list-style: none; padding: 0; }
+ul.library li { margin: 0 0 1.4rem; }
+ul.library .summary { display: block; color: var(--muted); }
+footer { font: 14px/1.5 system-ui, sans-serif; color: var(--muted); border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 1rem; }
+</style>
+$for(header-includes)$
+$header-includes$
+$endfor$
+</head>
+<body>
+<main>
+$if(crumbs)$<nav class="crumbs"><a href="$crumbs.href$">← $crumbs.label$</a></nav>$endif$
+$if(title)$
+<header>
+<h1 class="title">$title$</h1>
+$if(date)$<p class="meta">$if(author)$$for(author)$$author$$sep$, $endfor$ · $endif$$if(version-label)$$version-label$ $endif$$date$</p>$endif$
+</header>
+$endif$
+$if(downloads)$
+<div class="downloads"><strong>Download</strong>$for(downloads)$<a href="$downloads.file$" download>$downloads.label$</a>$endfor$</div>
+$endif$
+$if(show-toc)$
+<nav id="TOC" role="doc-toc"><strong>Contents</strong>
+$table-of-contents$
+</nav>
+$endif$
+$body$
+<footer>
+$if(license)$<p>$license$</p>$endif$
+<p><a href="/">jaromirsvoboda.github.io</a></p>
+</footer>
+</main>
+</body>
+</html>
