@@ -10,7 +10,7 @@
  "show-toc": true,
  "crumbs": {
   "href": "../index.html",
-  "label": "Library"
+  "label": "AI Safety Seminar"
  },
  "downloads": [
   {
