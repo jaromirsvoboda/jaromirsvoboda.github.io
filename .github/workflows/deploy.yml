@@ -37,7 +37,7 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Install what the leak scan needs to read PDFs and images
-        run: sudo apt-get install -y -q poppler-utils python3-pil
+        run: sudo apt-get update -q && sudo apt-get install -y -q poppler-utils python3-pil
 
       - name: Leak scan
         env:
