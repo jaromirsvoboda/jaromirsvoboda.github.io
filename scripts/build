@@ -2,24 +2,28 @@
 # Build the site from site/ into $1 (default _site/): copy everything, then render each
 # Markdown file and Jupyter notebook to an HTML page beside it (the .ipynb stays for download).
 # Files under a download/ folder are served as is, so a document can offer its own source.
-# library/index.html is generated from the front matter of library/*/index.md.
+# library/index.html and explainers/index.html are generated from the front matter of the pages below them.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
+"$root/scripts/check-clone" --ci-ok
 out=${1:-$root/_site}
 
 rm -rf "$out"
 cp -r "$root/site" "$out"
 rm -f "$out/.gitkeep"
 
-# Library index: one entry per library/<slug>/index.md, newest first.
-if [ -d "$out/library" ]; then
+# Section indexes: one entry per <section>/<slug>/index.md, newest first, from the front matter.
+# A folder holding no index.md of its own is skipped.
+section_index() {  # <folder> <title> <intro>
+  local dir=$out/$1 meta
+  [ -d "$dir" ] || return 0
   meta=$(mktemp)
   printf '%s' '$date$	$title$	$summary$' > "$meta"
   {
-    printf -- '---\ntitle: Library\npagetitle: Library\ncrumbs:\n  href: ../index.html\n  label: Home\n---\n\n'
-    printf 'Longer documents: study guides, digests and preparation notes, each readable here and downloadable as EPUB, PDF or Markdown.\n\n'
+    printf -- '---\ntitle: %s\npagetitle: %s\ncrumbs:\n  href: ../index.html\n  label: Home\n---\n\n' "$2" "$2"
+    printf '%s\n\n' "$3"
     printf '<ul class="library">\n'
-    for doc in "$out"/library/*/index.md; do
+    for doc in "$dir"/*/index.md; do
       [ -e "$doc" ] || continue
       slug=$(basename "$(dirname "$doc")")
       IFS=$'\t' read -r date title summary < <(pandoc "$doc" -t plain --template="$meta" | tr '\n' ' ' | sed 's/ *$//'; echo)
@@ -27,9 +31,13 @@ if [ -d "$out/library" ]; then
         "$date" "$slug" "$title" "$date" "$summary"
     done | sort -r | cut -f2-
     printf '</ul>\n'
-  } > "$out/library/index.md"
+  } > "$dir/index.md"
   rm -f "$meta"
-fi
+}
+section_index library Library \
+  'Longer documents: study guides, digests and preparation notes, each readable here and downloadable as EPUB, PDF or Markdown.'
+section_index explainers Explainers \
+  'Explanations of books, concepts and facts: each takes a source and works through it with examples, adding what the source leaves out. Readable here and downloadable as EPUB, PDF or Markdown.'
 
 find "$out" -type f \( -name '*.md' -o -name '*.ipynb' \) -not -path '*/download/*' -print0 |
 while IFS= read -r -d '' src; do

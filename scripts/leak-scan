@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Fail if any text file under the given paths (default: site/) matches a leak pattern.
+"""Fail if anything under the given paths (default: site/) matches a leak pattern.
+
+  scripts/leak-scan [<path>...]
+  scripts/leak-scan --stdin <label>      scan text from standard input (e.g. commit messages)
 
 Patterns come from scripts/leak-patterns (public, generic) and a private list kept
 outside this repo: $LEAK_PATTERNS_FILE, by default the vault copy. In CI the private
 list is written from the LEAK_PATTERNS secret. One Python regex per line, matched
 case-insensitively; blank lines and lines starting with # are ignored.
-Then runs gitleaks over the same paths for credentials.
+
+Every file is read the way scripts/gatelib.py describes: the text inside EPUBs and PDFs and
+the metadata of images are scanned too, and an image carrying a GPS position is refused.
+A file the scan cannot read fails the scan. Then gitleaks runs over the same paths for credentials.
 """
 import os
 import re
@@ -13,6 +19,10 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+sys.dont_write_bytecode = True         # no __pycache__ beside the scripts
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gatelib import GateError, files_under, texts  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 PRIVATE = Path(os.environ.get(
@@ -25,16 +35,19 @@ def load(path):
     return [re.compile(l, re.IGNORECASE) for l in lines if l and not l.startswith("#")]
 
 
-def text_files(paths):
-    for p in paths:
-        if p.is_file():
-            yield p
-        else:
-            yield from (f for f in sorted(p.rglob("*")) if f.is_file())
+def scan_text(label, text, patterns):
+    hits = 0
+    for n, line in enumerate(text.splitlines(), 1):
+        for rx in patterns:
+            m = rx.search(line)
+            if m:
+                hits += 1
+                print(f"{label}:{n}: {m.group(0)!r}  (pattern {rx.pattern!r})")
+    return hits
 
 
 def main():
-    paths = [Path(a) for a in sys.argv[1:]] or [ROOT / "site"]
+    args = sys.argv[1:]
     if not PRIVATE.is_file():
         sys.exit(f"leak-scan: private pattern list missing: {PRIVATE}")
     private = load(PRIVATE)
@@ -42,17 +55,34 @@ def main():
         sys.exit(f"leak-scan: private pattern list is empty: {PRIVATE}")
     patterns = load(ROOT / "scripts/leak-patterns") + private
 
+    if args[:1] == ["--stdin"]:
+        label = args[1] if len(args) > 1 else "stdin"
+        text = sys.stdin.read()
+        hits = scan_text(label, text, patterns)
+        if shutil.which("gitleaks") is None:
+            sys.exit("leak-scan: gitleaks not installed")
+        r = subprocess.run(["gitleaks", "stdin", "--no-banner", "--redact", "--log-level", "warn", "--verbose"],
+                           input=text.encode())
+        if hits or r.returncode:
+            sys.exit("leak-scan: FAILED; nothing may be published")
+        print("leak-scan: clean")
+        return
+
+    paths = args or [str(ROOT / "site")]
     hits = 0
-    for f in text_files(paths):
-        data = f.read_bytes()
-        if b"\0" in data[:8192]:
-            continue  # binary
-        for n, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
-            for rx in patterns:
-                m = rx.search(line)
-                if m:
-                    hits += 1
-                    print(f"{f}:{n}: {m.group(0)!r}  (pattern {rx.pattern!r})")
+    try:
+        for base in paths:
+            for f in files_under([base]):
+                rel = f.relative_to(base) if Path(base).is_dir() else Path(f.name)
+                hits += scan_text(f"{f} (path)", str(rel), patterns)
+                for label, text in texts(f):
+                    if label == "GPS":
+                        hits += 1
+                        print(f"{text}: image carries a GPS position (run scripts/strip-metadata on it)")
+                    else:
+                        hits += scan_text(label, text, patterns)
+    except GateError as e:
+        sys.exit(f"leak-scan: {e}; nothing may be published")
 
     if shutil.which("gitleaks") is None:
         sys.exit("leak-scan: gitleaks not installed")

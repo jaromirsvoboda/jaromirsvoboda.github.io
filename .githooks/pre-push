@@ -1,4 +1,56 @@
 #!/usr/bin/env bash
-# Last local gate before content becomes public history: scan everything in site/.
-# Enable once per clone: git config core.hooksPath .githooks
-exec "$(git rev-parse --show-toplevel)/scripts/leak-scan"
+# Last local gate before content becomes public history. Everything the push would make public is
+# checked, not just the net change at the tip: a file added in one commit and deleted in the next
+# still stays in history.
+#   - only branches may be pushed (a tag carries a message the gate does not read);
+#   - every new commit: author and committer use GitHub's noreply address, and the names and
+#     message pass the pattern scan;
+#   - every new file version (blob) in those commits, under any path, goes through the pattern
+#     scan and the semantic review, read from the object itself;
+# Then all of site/ is pattern-scanned once more.
+# Enable once per clone: git config core.hooksPath .githooks (scripts/check-clone insists).
+# The owner may pass a reviewed report with LEAK_GATE_ACCEPT=<report> git push.
+set -euo pipefail
+root=$(git rev-parse --show-toplevel)
+"$root/scripts/check-clone"
+zero=0000000000000000000000000000000000000000
+accept=()
+[ -n "${LEAK_GATE_ACCEPT-}" ] && accept=(--accept-review "$LEAK_GATE_ACCEPT")
+stage=$(mktemp -d)
+trap 'rm -rf "$stage"' EXIT
+
+while read -r _lref lsha rref rsha; do
+  [ "$lsha" = "$zero" ] && continue                       # deleting a branch publishes nothing
+  case $rref in
+    refs/heads/*) ;;
+    *) echo "pre-push: only branches may be pushed, not $rref" >&2; exit 1 ;;
+  esac
+  # New commits and objects: reachable from what is pushed, not from anything the remote has.
+  not=(--not --remotes)
+  [ "$rsha" != "$zero" ] && not+=("$rsha")
+
+  for c in $(git rev-list "$lsha" "${not[@]}"); do
+    for e in $(git log -1 --format='%ae %ce' "$c"); do
+      case $e in *@users.noreply.github.com) ;;
+        *) echo "pre-push: commit $c uses a personal e-mail ($e); amend it with the noreply address" >&2; exit 1 ;;
+      esac
+    done
+    git log -1 --format='%an%n%cn%n%B' "$c" | "$root/scripts/leak-scan" --stdin "commit $c"
+  done
+
+  # Every new blob, written under its path (kept for the extension and the file-name scans).
+  n=0
+  while read -r sha path; do
+    [ -n "$path" ] && [ "$(git cat-file -t "$sha")" = blob ] || continue
+    n=$((n + 1))
+    dest=$stage/$n/$path
+    mkdir -p "$(dirname "$dest")"
+    git cat-file blob "$sha" > "$dest"
+  done < <(git rev-list --objects "$lsha" "${not[@]}")
+done
+
+if [ -n "$(ls -A "$stage")" ]; then
+  "$root/scripts/leak-scan" "$stage"
+  "$root/scripts/semantic-review" "${accept[@]}" "$stage"
+fi
+exec "$root/scripts/leak-scan"

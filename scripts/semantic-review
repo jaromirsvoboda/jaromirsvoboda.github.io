@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+"""Have the local qwen model read everything about to be published and flag personal or
+confidential content that no pattern list can know about.
+
+  scripts/semantic-review [--accept-review <report>] <path>...
+
+Text is extracted as scripts/gatelib.py describes and reviewed paragraph by paragraph within
+each file; images are looked at too. Paragraphs and images already found clean (or accepted)
+are remembered by content hash in ~/.cache/leak-gate/, so re-publishing the same text, or
+the EPUB and PDF made from it, costs nothing.
+
+On a finding the review fails and writes a report (its path is printed). Only the site's owner,
+after reading the report, may pass it back with --accept-review: that marks exactly the content
+reviewed in it as accepted. Changed content has new hashes and is reviewed again.
+Agents never pass --accept-review.
+
+Fails closed: if qwen cannot be reached, or answers something unreadable, nothing is published.
+qwen runs on the owner's own hardware, so the text never leaves it.
+Config (kept out of this public repo): the gateway URL in QWEN_URL, ~/.config/leak-gate/qwen-url or
+~/.config/qwen/url; the key in QWEN_API_KEY or ~/.config/qwen/key.
+"""
+import base64
+import datetime
+import hashlib
+import io
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+sys.dont_write_bytecode = True         # no __pycache__ beside the scripts
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gatelib import IMAGE_EXT, GateError, files_under, texts  # noqa: E402
+
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "leak-gate"
+CFG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "qwen"
+CHUNK_CHARS = 60_000
+RULES = """You are the last check before files are published on a PUBLIC website. The site belongs
+to Jaromír Svoboda and contains explanations, study guides and summaries about technical and
+public topics. The material comes from his private notes vault, which also holds diaries, health,
+family, money, work and client documents that must never be published.
+
+Flag anything that belongs to one of these categories:
+- health: medical conditions, medication, therapy, mental health of the owner or anyone private
+- family: relatives, partners, children, relationships, intimate or household matters
+- finances: salary, debts, account numbers, investments, purchases tied to a person
+- work: the owner's employer, colleagues, clients, internal projects, contracts, unpublished business
+- people: a private (non-public) person named or identifiable together with personal details
+- location: home or work addresses, phone numbers, travel plans, places that locate the owner
+- credentials: passwords, keys, tokens, internal host names, IP addresses, internal URLs or paths
+- private-notes: diary-like or personal first-person content clearly not written for the public
+
+Do NOT flag: the owner's name as author; authors, researchers and public figures; published
+books, papers and their licences; public organisations and products; technical content, maths,
+code and examples; first-person remarks about reading or learning ("as I read further").
+If nothing qualifies, return an empty list. Quote the exact offending text."""
+SCHEMA = {"type": "object", "properties": {"findings": {"type": "array", "items": {
+    "type": "object",
+    "properties": {"category": {"type": "string", "enum": [
+        "health", "family", "finances", "work", "people", "location", "credentials", "private-notes"]},
+        "quote": {"type": "string"}, "reason": {"type": "string"}},
+    "required": ["category", "quote", "reason"]}}}, "required": ["findings"]}
+
+
+def setting(env, name):
+    if os.environ.get(env):
+        return os.environ[env].strip()
+    f = CFG / name
+    return f.read_text().strip() if f.is_file() else None
+
+
+def ask(content):
+    gate_url = Path.home() / ".config/leak-gate/qwen-url"
+    url = (os.environ.get("QWEN_URL") or (gate_url.read_text().strip() if gate_url.is_file() else None)
+           or setting("QWEN_URL", "url"))
+    if not url:
+        raise GateError(f"no qwen URL (QWEN_URL, {gate_url} or {CFG / 'url'})")
+    url = url.rstrip("/")
+    key = setting("QWEN_API_KEY", "key")
+    if not key:
+        raise GateError(f"no qwen API key (QWEN_API_KEY or {CFG / 'key'})")
+    body = {"model": "qwen", "max_tokens": 16384,
+            "messages": [{"role": "system", "content": RULES}, {"role": "user", "content": content}],
+            "chat_template_kwargs": {"enable_thinking": True, "reasoning_effort": "medium"},
+            "response_format": {"type": "json_schema", "json_schema": {"name": "review", "schema": SCHEMA}}}
+    req = urllib.request.Request(f"{url}/v1/chat/completions", data=json.dumps(body).encode(),
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    for _ in range(2):          # qwen occasionally stops while thinking and returns nothing
+        try:
+            with urllib.request.urlopen(req, timeout=1800) as r:
+                answer = (json.load(r)["choices"][0]["message"].get("content") or "").strip()
+        except (urllib.error.URLError, OSError) as e:
+            raise GateError(f"qwen unreachable at {url}: {e}") from None
+        if answer:
+            try:
+                found = json.loads(answer)["findings"]
+                if not isinstance(found, list) or not all(
+                        isinstance(x, dict) and all(isinstance(x.get(k), str) for k in ("category", "quote", "reason"))
+                        for x in found):
+                    raise TypeError
+                return found
+            except (ValueError, KeyError, TypeError):
+                raise GateError(f"qwen returned an unreadable review: {answer[:200]!r}") from None
+    raise GateError("qwen returned no answer twice")
+
+
+def norm_hash(paragraph):
+    """Hash that survives re-wrapping and markup, so the PDF and EPUB of a reviewed note match it.
+    Words stay separate, so only punctuation and spacing differences are merged."""
+    key = " ".join(re.findall(r"[^\W_]+", paragraph.lower()))
+    return hashlib.sha256(key.encode()).hexdigest() if key else None
+
+
+def paragraphs(text):
+    text = re.sub(r"<[^>]+>", " ", text)                     # XHTML inside EPUBs
+    return [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+
+
+def known(h):
+    return (CACHE / "known" / h).is_file()
+
+
+def remember(h, verdict, report=None):
+    d = CACHE / "known"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / h).write_text(json.dumps({"verdict": verdict, "report": report,
+                                   "date": datetime.datetime.now().isoformat(timespec="seconds")}))
+
+
+def image_part(data):
+    from PIL import Image
+    im = Image.open(io.BytesIO(data))
+    im.seek(0)
+    im = im.convert("RGB")
+    im.thumbnail((1280, 1280))
+    out = io.BytesIO()
+    im.save(out, format="PNG")
+    return {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(out.getvalue()).decode()}}
+
+
+def review(paths):
+    """Returns (findings, reviewed): findings per label, and the hashes reviewed in this run."""
+    findings, reviewed, pending = [], [], []      # pending: (label, [(hash, paragraph)])
+    names = set()
+    for base in paths:
+        for f in files_under([base]):
+            names.add(str(f.relative_to(base)) if Path(base).is_dir() else f.name)
+            for label, text in texts(f):
+                if label.endswith("(member name)"):
+                    names.add(f"{f.name}!{text}")
+    names = sorted(names)
+    h = norm_hash("file names: " + " / ".join(names))
+    if not known(h):
+        pending.append(("the published file names", [(h, "Names of the files to be published:\n"
+                                                         + "\n".join(names))]))
+    for f in files_under(paths):
+        if f.suffix.lower() in IMAGE_EXT:
+            data = f.read_bytes()
+            h = hashlib.sha256(data).hexdigest()
+            if not known(h):
+                print(f"semantic-review: looking at {f}", file=sys.stderr)
+                found = ask([{"type": "text", "text": f"Image file {f.name}, to be published. "
+                                                       "Flag anything visible in it that qualifies."},
+                             image_part(data)])
+                findings += [dict(x, file=str(f)) for x in found]
+                reviewed.append(h)
+        for label, text in texts(f):
+            if label == "GPS" or label.endswith("(member name)"):
+                continue                                # leak-scan refuses GPS; names reviewed above
+            todo, seen = [], set()
+            for p in paragraphs(text):
+                h = norm_hash(p)
+                if h and h not in seen and not known(h):
+                    seen.add(h)
+                    todo.append((h, p))
+            if todo:
+                pending.append((label, todo))
+
+    for label, todo in pending:
+        chunk, size = [], 0
+        for item in todo + [None]:
+            if item is None or (chunk and size + len(item[1]) > CHUNK_CHARS):
+                if chunk:
+                    print(f"semantic-review: reading {label} ({len(chunk)} paragraphs)", file=sys.stderr)
+                    found = ask(f"Text from {label}, to be published:\n\n"
+                                + "\n\n".join(p for _, p in chunk))
+                    findings += [dict(x, file=label) for x in found]
+                    reviewed += [h for h, _ in chunk]
+                chunk, size = [], 0
+            if item is not None:
+                chunk.append(item)
+                size += len(item[1])
+    return findings, reviewed
+
+
+def main():
+    args = sys.argv[1:]
+    accept = None
+    if args[:1] == ["--accept-review"]:
+        if len(args) < 2:
+            sys.exit("semantic-review: --accept-review needs a report path")
+        accept, args = Path(args[1]), args[2:]
+    if not args:
+        sys.exit(__doc__.strip().splitlines()[2])
+
+    if accept:
+        rep = json.loads(accept.read_text())
+        for h in rep["reviewed"]:
+            remember(h, "accepted", str(accept))
+        print(f"semantic-review: accepted {len(rep['reviewed'])} reviewed item(s) from {accept}")
+
+    try:
+        findings, reviewed = review(args)
+    except GateError as e:
+        sys.exit(f"semantic-review: {e}; nothing may be published")
+
+    if findings:
+        reports = CACHE / "reports"
+        reports.mkdir(parents=True, exist_ok=True)
+        path = reports / (datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
+        path.write_text(json.dumps({"paths": args, "findings": findings, "reviewed": reviewed},
+                                   ensure_ascii=False, indent=1))
+        for x in findings:
+            print(f"{x['file']}: [{x['category']}] {x['quote']!r}\n    {x['reason']}")
+        sys.exit(f"semantic-review: FAILED, {len(findings)} finding(s); report {path}\n"
+                 "Fix the source, or, if you are the owner and have read every finding, "
+                 "re-run with --accept-review " + str(path))
+    for h in reviewed:
+        remember(h, "clean")
+    print(f"semantic-review: clean ({len(reviewed)} new item(s) read)")
+
+
+if __name__ == "__main__":
+    main()

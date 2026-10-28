@@ -11,5 +11,5 @@
 # home directories
 /home/[a-z_][a-z0-9_-]*/
 [A-Z]:\\Users\\[^\\\s]+
-# e-mail addresses (but not git@host: remotes)
-(?<![\w.%+-])(?!git@)[\w.%+-]+@[\w-]+(\.[\w-]+)*\.[a-z]{2,}\b
+# e-mail addresses (but not git@host: remotes, noreply@ senders or GitHub's noreply addresses)
+(?<![\w.%+-])(?!git@|noreply@)[\w.%+-]+@(?!users\.noreply\.github\.com\b)[\w-]+(\.[\w-]+)*\.[a-z]{2,}\b

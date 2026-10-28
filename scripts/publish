@@ -1,26 +1,45 @@
 #!/usr/bin/env bash
-# Copy a file or folder into site/, after it passes the leak scan, then commit and push.
-#   scripts/publish [--no-push] <source> [<path under site/>]
+# Copy a file or folder into site/ through the leak gate, then commit and push.
+#   scripts/publish [--no-push] [--accept-review <report>] <source> [<path under site/>]
 # The destination defaults to the source's name; an existing one is replaced.
+# --accept-review is for the owner only, after reading a semantic-review report (see README).
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
+"$root/scripts/check-clone"
 
-push=1
-if [ "${1-}" = --no-push ]; then push=0; shift; fi
-[ $# -ge 1 ] && [ $# -le 2 ] || { sed -n '2,4p' "$0" >&2; exit 2; }
+push=1 accept=()
+while [ $# -gt 0 ]; do
+  case $1 in
+    --no-push) push=0; shift ;;
+    --accept-review) accept=(--accept-review "$2"); shift 2 ;;
+    *) break ;;
+  esac
+done
+[ $# -ge 1 ] && [ $# -le 2 ] || { sed -n '2,5p' "$0" >&2; exit 2; }
 src=${1%/}
 dest=${2:-$(basename "$src")}
 dest=${dest#/}
 [ -e "$src" ] || { echo "publish: no such file: $src" >&2; exit 2; }
 case $dest in ..*|*/../*|*/..) echo "publish: destination must stay inside site/" >&2; exit 2 ;; esac
 
-# Scan the source before anything enters the repo: once pushed, it stays in public history.
-"$root/scripts/leak-scan" "$src"
+# The gate runs on a scratch copy first: once pushed, content stays in public history.
+stage=$(mktemp -d)
+trap 'rm -rf "$stage"' EXIT
+# Keep the source's own name: the extension decides how a file is read. Copy symlinks as links
+# would point outside what was scanned, so refuse them.
+item=$stage/$(basename "$src")
+if [ -n "$(find "$src" -type l -print -quit)" ]; then
+  echo "publish: $src contains symbolic links; publish real files only" >&2; exit 1
+fi
+cp -r "$src" "$item"
+"$root/scripts/strip-metadata" "$item"
+"$root/scripts/leak-scan" "$item"
+"$root/scripts/semantic-review" "${accept[@]}" "$item"
 
 target=$root/site/$dest
 mkdir -p "$(dirname "$target")"
 rm -rf "$target"
-cp -r "$src" "$target"
+cp -r "$item" "$target"
 
 git -C "$root" add -A -- "site/$dest"
 if git -C "$root" diff --cached --quiet; then

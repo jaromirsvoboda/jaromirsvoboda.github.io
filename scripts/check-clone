@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Refuse to work in a clone where the leak gate could be bypassed: the pre-push hook must be
+# enabled and commits must carry GitHub's noreply address, not a personal e-mail.
+# Fix with:  git config core.hooksPath .githooks
+#            git config user.email 8951129+jaromirsvoboda@users.noreply.github.com
+set -euo pipefail
+# Only the build may run in CI (which never pushes); publish and pre-push always check.
+[ "${1-}" = --ci-ok ] && [ -n "${GITHUB_ACTIONS-}" ] && exit 0
+root=$(cd "$(dirname "$0")/.." && pwd)
+bad=0
+if [ "$(git -C "$root" config core.hooksPath || true)" != .githooks ]; then
+  echo "check-clone: the leak gate's pre-push hook is off; run: git config core.hooksPath .githooks" >&2
+  bad=1
+fi
+case $(git -C "$root" config user.email || true) in
+  *@users.noreply.github.com) ;;
+  *) echo "check-clone: commits would carry a personal e-mail; run:" \
+          "git config user.email 8951129+jaromirsvoboda@users.noreply.github.com" >&2
+     bad=1 ;;
+esac
+exit $bad

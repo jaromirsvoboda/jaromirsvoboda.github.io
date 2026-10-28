@@ -21,6 +21,7 @@ nav.crumbs a { color: var(--muted); }
 h1, h2, h3, h4 { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.25; }
 h1.title { font-size: 2.1rem; margin: 0 0 .3rem; }
 p.meta { font: 15px/1.5 system-ui, sans-serif; color: var(--muted); margin: 0 0 1.2rem; }
+p.meta + p.source { margin-top: -.9rem; }
 h1 { font-size: 1.75rem; margin-top: 2.6rem; border-bottom: 1px solid var(--line); padding-bottom: .2rem; }
 h2 { font-size: 1.35rem; margin-top: 2rem; }
 h3 { font-size: 1.1rem; }
@@ -56,6 +57,7 @@ $if(title)$
 <header>
 <h1 class="title">$title$</h1>
 $if(date)$<p class="meta">$if(author)$$for(author)$$author$$sep$, $endfor$ · $endif$$if(version-label)$$version-label$ $endif$$date$</p>$endif$
+$if(source)$<p class="meta source">Explains <a href="$source.url$"><em>$source.title$</em></a> by $source.author$$if(source.note)$ ($source.note$)$endif$</p>$endif$
 </header>
 $endif$
 $if(downloads)$

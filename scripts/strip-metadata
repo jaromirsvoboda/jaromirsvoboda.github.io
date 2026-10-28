@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""Remove metadata (EXIF, GPS, PNG text chunks, comments) from the images under the given paths.
+
+  scripts/strip-metadata <path>...
+
+Only images that carry metadata are rewritten, so a re-publish does not churn unchanged files.
+A JPEG keeps its compression (quality="keep") unless its EXIF orientation has to be applied to
+the pixels first. Images inside EPUBs are left to the scan, which refuses them if they carry GPS.
+"""
+import io
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True         # no __pycache__ beside the scripts
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gatelib import IMAGE_EXT, GateError, files_under, has_metadata  # noqa: E402
+
+
+def strip(path):
+    from PIL import Image, ImageOps
+    im = Image.open(path)
+    fmt = im.format
+    oriented = ImageOps.exif_transpose(im)
+    out = io.BytesIO()
+    kw = {}
+    if fmt == "JPEG":
+        kw = {"quality": "keep"} if oriented is im else {"quality": 95}
+    elif fmt == "PNG":
+        kw = {"optimize": True}
+    elif fmt == "WEBP":
+        kw = {"lossless": im.info.get("lossless", False), "quality": 95}
+    if fmt == "GIF":
+        oriented.save(out, format=fmt, save_all=True)
+    else:
+        oriented.save(out, format=fmt, **kw)
+    path.write_bytes(out.getvalue())
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(__doc__.strip().splitlines()[2])
+    n = 0
+    try:
+        for f in files_under(sys.argv[1:]):
+            if f.suffix.lower() in IMAGE_EXT and has_metadata(f.read_bytes(), f):
+                strip(f)
+                if has_metadata(f.read_bytes(), f):
+                    sys.exit(f"strip-metadata: {f} still carries metadata after stripping")
+                n += 1
+                print(f"strip-metadata: stripped {f}")
+    except GateError as e:
+        sys.exit(f"strip-metadata: {e}")
+    print(f"strip-metadata: {n} image(s) rewritten")
+
+
+if __name__ == "__main__":
+    main()
