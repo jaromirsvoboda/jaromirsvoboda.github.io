@@ -113,11 +113,11 @@ Read it as: the negative must be at least 1 farther from the anchor than the pos
 
 ### Beyond the book
 
-- **How $f$ is built in practice.** A network $g$ maps each input to a vector, an **embedding**, and $f(x, x') = \lVert g(x) - g(x') \rVert$. The distance function is not learned directly; the embedding is.
-- **Naming.** The book calls this triplet sum "a contrastive loss". It is usually called **triplet loss**, and in the literature "contrastive loss" on its own often means a different, pairwise formula.
+- In practice, a network $g$ maps each input to a vector, an **embedding**, and $f(x, x') = \lVert g(x) - g(x') \rVert$. What is learned is the embedding; the distance on top of it is a fixed formula.
+- The book calls this triplet sum "a contrastive loss". It is usually called **triplet loss**, and in the literature "contrastive loss" on its own often means a different, pairwise formula.
 - **The margin only sets the unit** while distances are unconstrained, because the model can rescale them. It becomes a real hyperparameter once embeddings are normalized to unit length, which is the usual practice.
 - **Most triplets are useless.** After the start of training, randomly chosen triplets are already satisfied and contribute zero gradient. Deliberately picking hard negatives, called **mining**, is what makes this loss work in practice, and it is where a large part of the engineering effort goes.
-- **The link to cross-entropy.** The dominant modern variant, **InfoNCE**, drops the hinge and uses softmax cross-entropy: similarities act as logits, and the positive is the "correct class" among many negatives. The book itself uses this form later, for CLIP (§6.6): the similarities between every image and every text in a batch form a matrix, and cross-entropy trains each image to predict its own caption among them, and each caption its own image. Text embedding models for semantic search and retrieval are trained the same way, so the two losses of §3.1 are more closely related than they look.
+- The dominant modern variant, **InfoNCE**, drops the hinge and uses softmax cross-entropy instead: similarities act as logits, and the positive is the "correct class" among many negatives. The book itself uses this form later, for CLIP (§6.6): the similarities between every image and every text in a batch form a matrix, and cross-entropy trains each image to predict its own caption among them, and each caption its own image. Text embedding models for semantic search and retrieval are trained the same way, so the two losses of §3.1 are more closely related than they look.
 
 ## 5. Backpropagation
 
@@ -164,7 +164,7 @@ The local derivative concerns that single operation only, ignoring the rest of t
 3. **Through $e = y - 20$.** Subtracting a constant does not change slopes, so the local derivative is 1 and $\partial\ell/\partial y = 8 \cdot 1 = 8$. Meaning: raise $y$ by 0.01 and the loss rises by about 0.08.
 4. **Through $y = w_2 h$.** This operation has two inputs, so there are two local derivatives:
    - with respect to $w_2$ it is $h = 6$, so $\partial\ell/\partial w_2 = 8 \cdot 6 = 48$. That is the first gradient we wanted.
-   - with respect to $h$ it is $w_2 = 4$, so $\partial\ell/\partial h = 8 \cdot 4 = 32$. This is not a final answer: it is the "message" passed down to the layer below.
+   - with respect to $h$ it is $w_2 = 4$, so $\partial\ell/\partial h = 8 \cdot 4 = 32$. This one goes down to the layer below as its incoming "message".
 5. **Through $h = w_1 x$.** Again two inputs:
    - with respect to $w_1$ it is $x = 2$, so $\partial\ell/\partial w_1 = 32 \cdot 2 = 64$. That is the second gradient.
    - with respect to $x$ it is $w_1 = 3$, giving $32 \cdot 3 = 96$. It is unused here, because $x$ is data, not a parameter. In a deeper network $x$ would be the output of an earlier layer, and 96 would be the message sent to it.
@@ -192,17 +192,17 @@ What to take from the example:
 
 - **Each step needs only local information:** the incoming message, its own stored inputs, and its own derivative. It never needs to know what the rest of the network looks like, which is why frameworks can automate it.
 - **The stored activations were essential:** step 4 needed $h = 6$ and step 5 needed $x = 2$. That is the memory cost of training.
-- **A gradient is a direction, not a prescription.** It says the loss rises 48 units per unit of $w_2$, *right here*. Take too big a step and that linear prediction breaks down, which is why the learning rate is small.
+- **A gradient is local.** It says the loss rises 48 units per unit of $w_2$, *right here*. Take too big a step and that linear prediction breaks down, which is why the learning rate is small.
 
 ### Beyond the book
 
-- **Terminology.** The book calls the gradient computation *and* gradient descent together "backpropagation": "The combination of this computation with the procedure of gradient descent is called backpropagation." Most people use the word for the gradient computation only, and call the update rule (SGD, Adam) the optimizer.
-- **It is exact, not an approximation.** Backpropagation is not "nudge a weight and see what happens"; it computes the same derivatives the chain rule gives on paper.
+- The book calls the gradient computation *and* gradient descent together "backpropagation": "The combination of this computation with the procedure of gradient descent is called backpropagation." Most people use the word for the gradient computation only, and call the update rule (SGD, Adam) the optimizer.
+- **No approximation is involved.** Backpropagation computes exactly the derivatives the chain rule gives on paper. Nudging a weight and watching the loss, as in the brute-force check above, is the approximate method.
 - **Why backward.** There is one loss and billions of parameters; going backward gives all the gradients in one pass. Section 6.3 shows why.
 - **Cost.** The book: most computation is in linear operations, "each requiring one matrix product for the forward pass and two for the products by the Jacobians for the backward pass", so the backward pass costs roughly twice the forward pass. Section 6.5 shows the two products.
 - **Memory is the real price.** Inference needs about as much memory as the most demanding single layer; training must keep all the forward activations, so its memory grows with depth (§3.4, "Resource usage"). This, together with a gradient and the optimizer's state (Adam keeps two extra numbers per parameter) for every parameter, is why fine-tuning a model needs far more GPU memory than running it. **Checkpointing** trades some of that memory back for computation: it stores only some activations and recomputes the rest during the backward pass.
 - **Vanishing and exploding gradients.** The gradient is a product of many Jacobians, so it can shrink or grow exponentially with depth. Residual connections and normalization layers (book, chapter 4) exist largely to prevent this; section 6.7 explains it.
-- **Nobody writes it by hand.** Frameworks record the operations of the forward pass and build the backward pass automatically: **autograd**.
+- Nobody writes it by hand: frameworks record the operations of the forward pass and build the backward pass automatically (**autograd**).
 
 ## 6. Jacobians and backpropagation
 
