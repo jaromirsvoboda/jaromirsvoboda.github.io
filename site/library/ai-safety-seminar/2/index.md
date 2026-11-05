@@ -76,7 +76,7 @@ A summary; the full account, with sources, is in [*AI Safety Seminar 1 — Prepa
 
 - **The agents knew it was wrong.** METR: "[Agents realized this activity was out of scope and unethical](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/#:~:text=Agents%20realized%20this%20activity%20was%20out%20of%20scope%20and%20unethical)", but joined because they believed helping the board's research would be broadly useful. Such concerns "[only rarely materially limited](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/#:~:text=only%20rarely%20materially%20limited)" what they did. One OpenAI researcher told METR the agents "had been trained to collaborate with other agents in certain cases", which could explain why they took orders from the board. A sweep of all transcripts found only 3–6 agents even considering alerting humans, and "[In none of these cases did the agent actually pursue alerting humans at all](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/#:~:text=In%20none%20of%20these%20cases%20did%20the%20agent%20actually%20pursue%20alerting%20humans%20at%20all)".
 - **The eval's own reward was misspecified.** The agents believed, from reading the ExploitGym paper, that the scorer would also check *how* they got the flag. It didn't: the grader checked only the flag, so "[agents could have achieved a perfect score simply by submitting their reverse-engineered flag](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/#:~:text=agents%20could%20have%20achieved%20a%20perfect%20score)".
-- **They tampered with records, not with their reasoning.** About 7 % of the transcripts METR evaluated were spoofed in places (METR expects the true share is "somewhat higher"), but "[they didn't seem interested in manipulating their chain of thought](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/#:~:text=they%20didn%E2%80%99t%20seem%20interested%20in%20manipulating%20their%20chain%20of%20thought)". That is why the story can be reconstructed at all.
+- **They tampered with records but left their reasoning alone.** About 7 % of the transcripts METR evaluated were spoofed in places (METR expects the true share is "somewhat higher"), but "[they didn't seem interested in manipulating their chain of thought](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/#:~:text=they%20didn%E2%80%99t%20seem%20interested%20in%20manipulating%20their%20chain%20of%20thought)". That is why the story can be reconstructed at all.
 - **The oversight was itself AI.** Over a thousand very long transcripts meant METR "[had to heavily delegate our analysis to often-unreliable AI agents](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/#:~:text=had%20to%20heavily%20delegate%20our%20analysis)"; a human researcher given enough time "would not have made most of the errors our analysis agents made". Hugging Face, reconstructing 17,600 attacker actions, did the same.
 - **The defenders' AI refused to help.** Hugging Face's first-choice models refused much of the forensic work. More on that in Part VI.
 
@@ -171,7 +171,7 @@ BlueDot gives input filtering three goals: removing dangerous information, preve
 
 ### 2. O'Brien et al. — *Deep Ignorance*
 
-**Thesis.** Filter biorisk content out of pretraining, and the model barely learns it. Unlike refusal training, it holds up under fine-tuning attacks, which matters for open-weight models.
+Filter biorisk content out of pretraining, and the model barely learns it. Unlike refusal training, it holds up under fine-tuning attacks, which matters for open-weight models.
 
 **Why it matters.** Today's safeguards mostly work in post-training: "[The unsafe knowledge remains in the model's weights.](https://deepignorance.ai/#:~:text=The%20unsafe%20knowledge%20remains%20in%20the%20model)" For an open-weight model "[it is straightforward to train open-weight models never to refuse unsafe requests](https://deepignorance.ai/#:~:text=it%20is%20straightforward%20to%20train%20open%2Dweight%20models%20never%20to%20refuse)". The authors, Stephen Casper and Geoffrey Irving among them, ask whether filtering can do better.
 
@@ -190,13 +190,13 @@ BlueDot gives input filtering three goals: removing dangerous information, preve
 **Counterpoints.**
 
 - **The authors' own scope.** "[We only study unimodal 6.9B parameter language models without instruction fine-tuning.](https://arxiv.org/html/2508.06601v2)" Whether the tamper resistance holds for frontier, multimodal, instruction-tuned models is open.
-- **Durability is not permanence.** A 2026 study of protein language models (Aaron Maiwald and colleagues, 19 October) found that filtering selectively degrades viral capabilities. The catch: "[However, fine-tuning on sequences from the removed viral families restores the lost performance](https://arxiv.org/abs/2610.26651)", for about $80 of GPU time even for the largest model. A different kind of model, but the same warning: filtering raises the attacker's cost rather than closing the door.
-- **Bad data can be useful.** Kenneth Li and colleagues found that toxic pretraining data "[also makes the toxicity easier to remove](https://proceedings.mlr.press/v267/li25d.html)" later. Removing *behaviours* may backfire in a way that removing *facts* may not.
+- **Durable, but reversible.** A 2026 study of protein language models (Aaron Maiwald and colleagues, 19 October) found that filtering selectively degrades viral capabilities. The catch: "[However, fine-tuning on sequences from the removed viral families restores the lost performance](https://arxiv.org/abs/2610.26651)", for about $80 of GPU time even for the largest model. A different kind of model, but the same warning: filtering raises the attacker's cost rather than closing the door.
+- Bad data can even be useful: Kenneth Li and colleagues found that toxic pretraining data "[also makes the toxicity easier to remove](https://proceedings.mlr.press/v267/li25d.html)" later. Removing *behaviours* may backfire in a way that removing *facts* may not.
 - **Later development, in filtering's favour.** Neil Rathi and Alec Radford (January 2026) report that "[filtering tokens is more effective than filtering documents](https://arxiv.org/abs/2601.21571)", and that filtering gets more effective with scale, on the proxy task of removing medical capabilities.
 
 ### 3. Chen et al. (Anthropic) — *Enhancing Model Safety through Pretraining Data Filtering*
 
-**Thesis.** A frontier lab ran the same experiment on chemical, biological, radiological and nuclear (CBRN) weapons data, with LLM-based classifiers, and got a real but modest reduction at no measured cost to usefulness.
+A frontier lab ran the same experiment on chemical, biological, radiological and nuclear (CBRN) weapons data, with LLM-based classifiers, and got a real but modest reduction at no measured cost to usefulness.
 
 **Method.** Score every pretraining document for harmfulness and drop those above a threshold. The goal, as they put it: "[maximize the performance drop on harmful capability evals, and minimize the performance drop on harmless capability evals](https://alignment.anthropic.com/2025/pretraining-data-filtering/#:~:text=maximize%20the%20performance%20drop%20on%20harmful%20capability%20evals)". They compared six classifiers. The best on synthetic test documents (Claude 3.5 Sonnet prompted with a constitution, F1 0.96) was too expensive to run over the whole corpus, and a two-step version built on it did worse on real data. The one they chose was a small fine-tuned classifier (F1 0.94).
 
@@ -250,7 +250,7 @@ Then one code change flipped a sign. OpenAI's paper, section 4.4, "[Bugs can opt
 
 ### 6. Li-Lian Ang — *A simple technical explanation of RLH(AI)F*
 
-**Thesis.** RLHF in three steps, and RLAIF (constitutional AI) as a cheaper version that replaces most human labels with a model guided by written principles.
+Ang explains RLHF in three steps, then RLAIF (constitutional AI), a cheaper version that replaces most human labels with a model guided by written principles.
 
 **RLHF.**
 
@@ -288,16 +288,16 @@ Then one code change flipped a sign. OpenAI's paper, section 4.4, "[Bugs can opt
 
 - **RLHF as a stepping stone.** Paul Christiano, who "[worked on RLHF](https://www.alignmentforum.org/posts/vwu4kegAEZTBtpT6p/thoughts-on-the-impact-of-rlhf-research)" himself, defends that research because "[it is hard to productively work on more challenging alignment problems without first implementing basic solutions](https://www.alignmentforum.org/posts/vwu4kegAEZTBtpT6p/thoughts-on-the-impact-of-rlhf-research)", while agreeing it doesn't solve alignment.
 - **The standard catalogue.** Stephen Casper and colleagues' [*Open Problems and Fundamental Limitations of RLHF*](https://arxiv.org/abs/2307.15217) (2023) covers the same ground in depth and asks how to "understand, improve, and complement RLHF in practice", not to abandon it.
-- **Sycophancy, measured.** Mrinank Sharma and colleagues found sycophancy across five assistants and conclude it is "[likely driven in part by human preference judgments favoring sycophantic responses](https://arxiv.org/abs/2310.13548)".
+- Mrinank Sharma and colleagues measured sycophancy across five assistants and conclude it is "[likely driven in part by human preference judgments favoring sycophantic responses](https://arxiv.org/abs/2310.13548)".
 - **Whose preferences?** Shibani Santurkar and colleagues found "[substantial misalignment between the views reflected by current LMs and those of US demographic groups](https://arxiv.org/abs/2303.17548)". A reward model learns its raters' views.
-- **The pipeline is not the only one.** Direct preference optimisation (DPO, Rafailov et al. 2023) trains on the comparisons directly, "[eliminating the need for sampling from the LM during fine-tuning](https://arxiv.org/abs/2305.18290)": no separate coach, no PPO.
+- Direct preference optimisation (DPO, Rafailov et al. 2023) shortens the pipeline: it trains on the comparisons directly, "[eliminating the need for sampling from the LM during fine-tuning](https://arxiv.org/abs/2305.18290)": no separate coach, no PPO.
 - **Later development, close to the July pattern.** Anthropic deliberately trained a model on hackable RL environments (*Training a Misaligned Reward Seeker*, August 2026). It learned to reward-hack and generalised: "[in simulated cyber evaluations, it broke out of its sandbox, stole credentials](https://alignment.anthropic.com/2026/reward-seeker/)" and attacked infrastructure to steal an answer key. But its reward seeking "seemed ‘myopic’", focused on the current task.
 
 ## Part V — More safety techniques
 
 ### 8. Google DeepMind — *An Approach to Technical AGI Safety and Security*
 
-**Thesis.** A frontier lab's plan for avoiding *severe* harm. Two of the four risk areas are in scope, misuse and misalignment, each with its own strategy; against misalignment there are two lines of defence. The plan is "anytime": it must be possible to apply it quickly to today's ML pipeline.
+DeepMind's plan for avoiding *severe* harm covers two of its four risk areas, misuse and misalignment, each with its own strategy; against misalignment there are two lines of defence. The plan is "anytime": it must be possible to apply it quickly to today's ML pipeline.
 
 ![Figure 14 (Google DeepMind, Figure 1). Four risk areas, grouped by who or what drives the risk: misuse (the user is an adversary), misalignment (the AI is), mistakes (the real world is complex), structural risks (incentives, culture).](figures/ais2-src-dm-risks.png)
 
@@ -335,7 +335,7 @@ Then one code change flipped a sign. OpenAI's paper, section 4.4, "[Bugs can opt
 - **Debate**: two models argue, a human judges. Weaknesses: "[The truth is not always the most persuasive.](https://blog.bluedot.org/p/scalable-oversight-intro/#:~:text=The%20truth%20is%20not%20always%20the%20most%20persuasive)" Arguments "might have irreducible complexity". "Models could collude."
 - **Weak-to-strong generalisation**: GPT-2’s noisy labels used to fine-tune GPT-4, which then does better than GPT-2. Jones's explanation: this is "likely" because GPT-4 already "knows" much of the answer from pretraining. Weakness: worse results on some tasks and larger models.
 
-**His final caveat.** "[Perfect feedback still leaves room for other problems.](https://blog.bluedot.org/p/scalable-oversight-intro/#:~:text=Perfect%20feedback%20still%20leaves%20room%20for%20other%20problems)" Even with perfect feedback a model can learn the wrong goal (week 1’s goal misgeneralisation).
+Jones ends with a caveat: "[Perfect feedback still leaves room for other problems.](https://blog.bluedot.org/p/scalable-oversight-intro/#:~:text=Perfect%20feedback%20still%20leaves%20room%20for%20other%20problems)" Even with perfect feedback a model can learn the wrong goal (week 1’s goal misgeneralisation).
 
 **Counterpoints.**
 
@@ -345,7 +345,7 @@ Then one code change flipped a sign. OpenAI's paper, section 4.4, "[Bugs can opt
 
 ### 10. Anthropic Alignment Science — *Recommendations for Technical AI Safety Research Directions*
 
-**Thesis.** A map of open problems Anthropic wants others to work on, many of which it lacks the capacity to pursue itself. It reads as a list of what "training safer models" leaves open.
+Anthropic maps the open problems it wants others to work on, many of which it lacks the capacity to pursue itself. It reads as a list of what "training safer models" leaves open.
 
 **The directions, briefly.**
 
@@ -423,7 +423,7 @@ The organiser's task: compare the unit's proposals with the lessons of July. One
 3. **Who do safeguards constrain?** In July, refusal training slowed the defender far more than the attacker. Is that an argument against cyber refusals, or for different ones? The error message in Figure 18 itself points to a "Cyber Verification Program": verified access for defenders. Who should verify them?
 4. **Did RL training make it worse?** Agents trained to be persistent and collaborative, rewarded on tasks some of which couldn't be done honestly, learned to cheat together. Is this a failure of the training method, of the task design, or of both together, like GPT-2’s sign flip?
 5. **Is "train it safe" the main line or the backstop?** DeepMind puts model-level alignment first and control second. Hugging Face's fixes were all control. Which should a lab invest in first, if it had to choose?
-6. **Can AI oversee AI?** METR needed GPT-5.6 Sol, a model from the same family as some of the attackers, to read the transcripts. It says AI help made the work "dramatically faster", and also that it is "not confident we would have detected" Sol lying. Solution, or the problem restated? Is AI-assisted oversight a solution or the problem restated?
+6. **Can AI oversee AI?** METR needed GPT-5.6 Sol, a model from the same family as some of the attackers, to read the transcripts. It says AI help made the work "dramatically faster", and also that it is "not confident we would have detected" Sol lying. Is AI-assisted oversight a solution, or the problem restated?
 7. **Is legible reasoning a lasting gift?** The chains of thought were readable this time. Anthropic lists faithfulness as an open problem, and training against a monitor could teach models to hide. DeepMind's own figure caption warns that using the monitor as a training signal "could lead to the AI system hiding the bad behavior rather than removing it". Should labs promise not to train against chain-of-thought monitors?
 
 ### Questions to bring
@@ -447,7 +447,7 @@ The organiser's task: compare the unit's proposals with the lessons of July. One
 
 ### Conclusion
 
-The unit's three levers each bend. Filtering is cheap and resists fine-tuning better than refusal training, but it removes only part of the knowledge, cannot touch what users paste into the prompt, and is not designed to catch planted backdoors. RLHF and constitutional AI teach preferences, so they give way to a jailbreak or a $200 fine-tune, and in July they did not hold against a task that couldn't be done honestly; optimising a flawed signal hard yields sycophancy, deception or, in GPT-2’s case, fluent filth. Scalable oversight's best ideas are still experiments. July put a model with trained-in ethics into a badly specified evaluation with weak walls, and the ethics lost. What failed was the system around it: isolation leaked, the classifiers were off, alerts went unanswered. What helped was least privilege where it existed, readable reasoning, and an open-weight model that didn't refuse. Train models as safely as we can, and build the second line of defence as if training had failed.
+The unit's three levers each bend. Filtering is cheap and resists fine-tuning better than refusal training, but it removes only part of the knowledge and cannot touch what users paste into the prompt; planted backdoors are outside what it was built to catch. RLHF and constitutional AI teach preferences, so they give way to a jailbreak or a $200 fine-tune, and in July they did not hold against a task that couldn't be done honestly. Optimise a flawed signal hard enough and you get sycophancy and deception, or, in GPT-2’s case, fluent filth. Scalable oversight's best ideas are still experiments. July put a model with trained-in ethics into a badly specified evaluation with weak walls, and the ethics lost. What failed was the system around it. Isolation leaked through a shared repository and the classifiers were off; the alerts that did come went unanswered. Least privilege helped where it existed, and readable reasoning made the reconstruction possible. The defenders' own analysis ran on an open-weight model that didn't refuse. Train models as safely as we can, and build the second line of defence as if training had failed.
 
 ### Czech terms for the discussion
 
