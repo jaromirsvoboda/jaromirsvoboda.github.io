@@ -1,0 +1,24 @@
+[Unit]
+Description=Private GoatCounter v2.7.0
+After=network.target
+
+[Service]
+User=goatcounter
+Group=goatcounter
+StateDirectory=goatcounter
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/goatcounter
+ExecStart=/opt/goatcounter/goatcounter serve -listen 127.0.0.1:8081 -tls none -public-port 8081 -db sqlite+/var/lib/goatcounter/db.sqlite3 -debug=
+Restart=on-failure
+TimeoutStopSec=60
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+# No debug=req; discard even error output, which may include a hit or IP.
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

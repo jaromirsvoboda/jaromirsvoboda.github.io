@@ -50,6 +50,9 @@ jobs:
       - name: Build
         run: scripts/build _site
 
+      - name: Leak scan built site
+        run: LEAK_PATTERNS_FILE="$RUNNER_TEMP/leak-patterns" scripts/leak-scan _site
+
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site

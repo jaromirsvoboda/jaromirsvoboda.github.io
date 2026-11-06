@@ -32,7 +32,7 @@
 **What this is:** a prep book for the first seminar meeting, built from *AI safety seminář - materiály 1*, the organiser's reading list. It follows BlueDot's [*Technical AI Safety* week 1](https://bluedot.org/courses/technical-ai-safety/1/3), with the newer [*AGI Strategy* week 1](https://bluedot.org/courses/agi-strategy/1/1) readings added. I read all seven items and both BlueDot framing pages in full (the video via its captions), plus the primary reports on the July 2026 incident and the published reactions to it. Written 18 October 2026; revised the same day after reviews for fact-checking, omissions, balance, teaching value and layout. Remarks marked *(my note)* are mine, not the authors'.
 
 
-### If you only have 20 minutes
+## If you only have 20 minutes
 
 1. Read **Vocabulary** and **Telling the two apart**. The organiser's goal for this meeting is to understand *reward misspecification* (we rewarded the wrong thing) and *goal misgeneralization* (we rewarded the right thing, and the model learned something else that looked identical in training), and why each is a problem.
 2. Try the **ten practice cases**, then check the answers.
@@ -41,7 +41,7 @@
 
 The organiser says it is fine not to get through all seven readings. The core three are [Jones](https://blog.bluedot.org/p/what-is-ai-alignment), [the specification gaming video](https://www.youtube.com/watch?v=jQOBaGka7O0) and [Cotra](https://www.cold-takes.com/why-ai-alignment-could-be-hard-with-modern-deep-learning/). The other four come from the AGI Strategy course: three pieces from 2026 and [Karnofsky's 2022 strategy essay](https://www.cold-takes.com/racing-through-a-minefield-the-ai-deployment-problem/).
 
-### The reading list
+## The reading list
 
 **Core (Technical AI Safety 1.3, ["Building AI safely is hard"](https://bluedot.org/courses/technical-ai-safety/1/3))**
 

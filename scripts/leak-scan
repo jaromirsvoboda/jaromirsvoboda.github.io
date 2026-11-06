@@ -25,6 +25,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gatelib import GateError, files_under, texts  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+# The owner explicitly publishes this collection-only Funnel endpoint. It may
+# appear in the reporter, source and docs; other private hosts still fail.
+PUBLIC_COUNTER = "https://devvm.tail77ab30.ts.net:8443/count"
 PRIVATE = Path(os.environ.get(
     "LEAK_PATTERNS_FILE",
     Path.home() / "vault/dotfiles/shareables/leak-patterns.txt"))
@@ -36,6 +39,7 @@ def load(path):
 
 
 def scan_text(label, text, patterns):
+    text = text.replace(PUBLIC_COUNTER, "[public collection endpoint]")
     hits = 0
     for n, line in enumerate(text.splitlines(), 1):
         for rx in patterns:

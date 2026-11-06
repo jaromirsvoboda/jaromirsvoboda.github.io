@@ -1,0 +1,21 @@
+[Unit]
+Description=Collection-only GoatCounter proxy
+After=goatcounter.service
+Requires=goatcounter.service
+PartOf=goatcounter.service
+
+[Service]
+User=goatcounter
+Group=goatcounter
+ExecStart=/usr/bin/python3 /opt/goatcounter/collection-proxy.py
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

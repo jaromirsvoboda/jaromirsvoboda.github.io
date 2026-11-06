@@ -1,0 +1,15 @@
+[Unit]
+Description=Expire GoatCounter aggregates and back up SQLite
+After=goatcounter.service
+
+[Service]
+Type=oneshot
+User=goatcounter
+Group=goatcounter
+ExecStart=/usr/bin/python3 /opt/goatcounter/maintenance.py
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/goatcounter

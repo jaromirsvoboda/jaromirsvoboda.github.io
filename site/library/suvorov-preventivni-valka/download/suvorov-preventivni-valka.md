@@ -11,11 +11,11 @@
  "downloads": [
   {
    "label": "EPUB (čtečky, telefony)",
-   "file": "download/suvorov-preventivni-valka.epub"
+   "file": "https://jaromirsvoboda.github.io/library/suvorov-preventivni-valka/download/suvorov-preventivni-valka.epub"
   },
   {
    "label": "Zdrojový Markdown",
-   "file": "download/suvorov-preventivni-valka.md"
+   "file": "https://jaromirsvoboda.github.io/library/suvorov-preventivni-valka/download/suvorov-preventivni-valka.md"
   }
  ],
  "crumbs": {

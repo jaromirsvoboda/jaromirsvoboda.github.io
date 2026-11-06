@@ -12,11 +12,11 @@
 
 This page explains passages of François Fleuret's *The Little Book of Deep Learning* (version 1.3, 2026) in more detail than the book has room for. The book is short and precise: a single page can hold an equation that takes a few paragraphs to unpack. Each section below takes one such passage, works through it with numbers, and then adds what the book leaves out under the heading "Beyond the book". References such as §3.1 point to the book's sections.
 
-The book is free under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) licence. Its [official page](https://fleuret.org/francois/lbdl.html) has the current version; an unmodified copy of version 1.3 is in the download box above.
+The book is free under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) licence. Its [official page](https://fleuret.org/francois/lbdl.html) has the current version; an unmodified [PDF of version 1.3](https://jaromirsvoboda.github.io/explainers/little-book-of-deep-learning/download/fleuret-little-book-of-deep-learning-v1.3.pdf) is also available. This explainer can be downloaded as [EPUB](https://jaromirsvoboda.github.io/explainers/little-book-of-deep-learning/download/little-book-of-deep-learning.epub) or [PDF](https://jaromirsvoboda.github.io/explainers/little-book-of-deep-learning/download/little-book-of-deep-learning-a4.pdf).
 
 The page grows as I read further. So far it covers the losses of §3.1 and backpropagation (§3.4), and ends with a section the book does not have: what a Jacobian is and how backpropagation is a product of them.
 
-The numbers on this page were recomputed by a short numpy script, offered in the download box, and the gradients of sections 3 and 6 were checked against finite differences.
+The numbers on this page were recomputed by a short [numpy script](https://jaromirsvoboda.github.io/explainers/little-book-of-deep-learning/download/lbdl_check.py) and the gradients of sections 3 and 6 were checked against finite differences.
 
 ## 1. The exponential function
 
@@ -384,7 +384,7 @@ assert np.allclose(J.ravel(), g_x)
 print(g_x.round(3))   # [ 0.87  -0.006 -0.876]
 ```
 
-The full check script, offered in the download box, also nudges every input and every weight by $10^{-6}$ and recomputes the loss: the finite differences agree with backpropagation to within $10^{-9}$.
+The [full check script](https://jaromirsvoboda.github.io/explainers/little-book-of-deep-learning/download/lbdl_check.py) also nudges every input and every weight by $10^{-6}$ and recomputes the loss: the finite differences agree with backpropagation to within $10^{-9}$.
 
 ### 6.7 Vanishing and exploding gradients, in Jacobian terms
 

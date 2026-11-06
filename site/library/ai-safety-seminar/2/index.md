@@ -34,7 +34,7 @@
 **What this is:** notes for the second meeting, following the organiser's reading list: the Hugging Face incident, then BlueDot's *Technical AI Safety* unit 2, *Training safer models*, compared with the incident. Sources: all ten core items in full (videos via captions), the unit's exercises, OpenAI's 2019 GPT-2 paper, METR's investigation, Hugging Face's timeline and published reactions. Written 25 October 2026. *(My note)* marks my own remarks. Last week's notes, [*AI Safety Seminar 1 — Preparation*](../1/index.html), cover the incident in depth.
 
 
-### The reading list
+## The reading list
 
 **First: the incident (from last week)**
 

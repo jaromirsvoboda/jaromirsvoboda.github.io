@@ -51,7 +51,7 @@ The page grows as I read further. So far it covers the losses of §3.1 and backp
 
 The numbers on this page were recomputed by a short numpy script, offered in the download box, and the gradients of sections 3 and 6 were checked against finite differences.
 
-### 1. The exponential function
+## 1. The exponential function
 
 Softmax (section 2) is built from $\exp$, so it is worth being precise about it first.
 
@@ -75,7 +75,7 @@ Five properties do all the work in what follows:
 
 Here, as in nearly all machine learning writing, $\log$ is the natural logarithm, base $e$. The book does not say so explicitly, but its formulas assume it: the perplexity of §3.2 is the exponential of the cross-entropy. A loss computed by hand with $\log_{10}$ will not match anyone else's numbers.
 
-### 2. Softmax: from logits to probabilities
+## 2. Softmax: from logits to probabilities
 
 **Book: §3.1, "Cross-entropy".** For classification, the model outputs one real number per class, $f(x;w)_y$, called a **logit**. The book interprets it as "the logarithm of a non-normalized probability" and turns the logits into an estimate of the probability of each class:
 
@@ -93,7 +93,7 @@ A gap of 1 between two logits means "$e \approx 2.7$ times more likely". Adding 
 
 **Why the book prefers "softargmax".** The output approximates a one-hot vector pointing at the largest logit; it does not approximate the largest value itself. Multiply the logits $(2, 1, 0)$ by 10 and the output becomes $(0.99995, 0.00005, 0.000000002)$, almost exactly one-hot. Dividing logits by a number before softmax is what the **temperature** setting does when a language model samples text (multiplying by 10 is temperature 0.1): a low temperature sharpens the distribution towards the top choice, a high one flattens it.
 
-### 3. Cross-entropy
+## 3. Cross-entropy
 
 **Book: §3.1, "Cross-entropy".** The model should give high probability to the true class of each training example $(x_n, y_n)$, so training minimizes
 
@@ -111,7 +111,7 @@ $$L_{ce} = -f_{y_n} + \log \sum_z e^{f_z}$$
 
 The second term is a smooth version of "the largest logit". So the loss reads: the largest logit, minus the true class's logit. It is near zero only when the true class's logit dominates all the others.
 
-#### Beyond the book
+### Beyond the book
 
 - **The gradient is "predicted minus target".** With respect to each logit, $\partial L/\partial f_z = \hat P(z) - \mathbb{1}[z = y_n]$. For the example with the first class true, the gradient is $(0.665 - 1, 0.245, 0.090) = (-0.335, 0.245, 0.090)$: push the true logit up, push the others down in proportion to the probability they took. This clean gradient is one reason softmax and cross-entropy are almost always paired for classification. Section 6.5 derives it with Jacobians.
 - **Why "cross-entropy".** The general cross-entropy between a target distribution $p$ and a prediction $q$ is $-\sum_z p(z)\log q(z)$. With a one-hot target, every term but one vanishes, which is why the book's formula has no sum over classes.
@@ -119,7 +119,7 @@ The second term is a smooth version of "the largest logit". So the loss reads: t
 - **$\hat P$ is not a trustworthy confidence.** The hat means "estimate". Modern networks are typically overconfident: a predicted 0.99 does not mean the prediction is right 99 % of the time (Guo et al., ["On Calibration of Modern Neural Networks"](https://arxiv.org/abs/1706.04599), 2017).
 - **A common bug.** Never compute softmax and then take its logarithm as two separate steps: $\exp$ overflows for large logits, and the logarithm of a probability that underflowed to 0 is $-\infty$. Libraries compute $-f_y + \log\sum_z e^{f_z}$ directly and stably, and for that reason they take raw logits: PyTorch's `CrossEntropyLoss`, for example. Applying softmax yourself before such a loss computes the wrong quantity and silently degrades training.
 
-### 4. Contrastive loss (triplet loss)
+## 4. Contrastive loss (triplet loss)
 
 **Book: §3.1, "Contrastive loss".** This loss teaches a model to measure distance, when nobody can say what the correct distance is.
 
@@ -144,7 +144,7 @@ Read it as: the negative must be at least 1 farther from the anchor than the pos
 
 **Why $\max(0, \cdot)$.** Once a triplet is satisfied, its loss is exactly zero and so is its gradient: the model stops caring about it. Cross-entropy, by contrast, never reaches zero and always pushes for more confidence.
 
-#### Beyond the book
+### Beyond the book
 
 - In practice, a network $g$ maps each input to a vector, an **embedding**, and $f(x, x') = \lVert g(x) - g(x') \rVert$. What is learned is the embedding; the distance on top of it is a fixed formula.
 - The book calls this triplet sum "a contrastive loss". It is usually called **triplet loss**, and in the literature "contrastive loss" on its own often means a different, pairwise formula.
@@ -152,11 +152,11 @@ Read it as: the negative must be at least 1 farther from the anchor than the pos
 - **Most triplets are useless.** After the start of training, randomly chosen triplets are already satisfied and contribute zero gradient. Deliberately picking hard negatives, called **mining**, is what makes this loss work in practice, and it is where a large part of the engineering effort goes.
 - The dominant modern variant, **InfoNCE**, drops the hinge and uses softmax cross-entropy instead: similarities act as logits, and the positive is the "correct class" among many negatives. The book itself uses this form later, for CLIP (§6.6): the similarities between every image and every text in a batch form a matrix, and cross-entropy trains each image to predict its own caption among them, and each caption its own image. Text embedding models for semantic search and retrieval are trained the same way, so the two losses of §3.1 are more closely related than they look.
 
-### 5. Backpropagation
+## 5. Backpropagation
 
 **Book: §3.4.** Gradient descent (§3.3) needs, at every step, the gradient of the loss with respect to every parameter. Backpropagation computes all of them, for billions of parameters, in a single backward sweep.
 
-#### The mechanism
+### The mechanism
 
 A model is a chain of layers, $x^{(d)} = f^{(d)}(x^{(d-1)}; w_d)$, from the input $x^{(0)} = x$ to the output $x^{(D)}$.
 
@@ -169,7 +169,7 @@ A Jacobian is the table of all partial derivatives of a function: how much each 
 
 The book's Figure 3.3 draws exactly this: one black arrow forward through each layer, and two products by Jacobians going back.
 
-#### The tiny example, step by step
+### The tiny example, step by step
 
 A "network" of two layers, each multiplying by one weight, with a squared-error loss:
 
@@ -204,7 +204,7 @@ The local derivative concerns that single operation only, ignoring the rest of t
 
 The 32 is computed once and serves everything below it. That reuse is the whole efficiency trick.
 
-#### Checking by brute force
+### Checking by brute force
 
 Nudge each weight by 0.01 and recompute the loss directly:
 
@@ -213,7 +213,7 @@ Nudge each weight by 0.01 and recompute the loss directly:
 
 The small mismatch is there because a gradient is exact only for infinitely small nudges. Backpropagation got both numbers from one backward sweep, without re-running the model once per weight. With two weights that saves little; with a billion weights, brute force would need a billion forward passes.
 
-#### Using the gradients
+### Using the gradients
 
 One step of gradient descent with learning rate 0.001, both weights updated from the same gradients:
 
@@ -227,7 +227,7 @@ What to take from the example:
 - **The stored activations were essential:** step 4 needed $h = 6$ and step 5 needed $x = 2$. That is the memory cost of training.
 - **A gradient is local.** It says the loss rises 48 units per unit of $w_2$, *right here*. Take too big a step and that linear prediction breaks down, which is why the learning rate is small.
 
-#### Beyond the book
+### Beyond the book
 
 - The book calls the gradient computation *and* gradient descent together "backpropagation": "The combination of this computation with the procedure of gradient descent is called backpropagation." Most people use the word for the gradient computation only, and call the update rule (SGD, Adam) the optimizer.
 - **No approximation is involved.** Backpropagation computes exactly the derivatives the chain rule gives on paper. Nudging a weight and watching the loss, as in the brute-force check above, is the approximate method.
@@ -237,11 +237,11 @@ What to take from the example:
 - **Vanishing and exploding gradients.** The gradient is a product of many Jacobians, so it can shrink or grow exponentially with depth. Residual connections and normalization layers (book, chapter 4) exist largely to prevent this; section 6.7 explains it.
 - Nobody writes it by hand: frameworks record the operations of the forward pass and build the backward pass automatically (**autograd**).
 
-### 6. Jacobians and backpropagation
+## 6. Jacobians and backpropagation
 
 The book's description of backpropagation fits in two sentences, both about "multiplying by the Jacobian". The tiny example of section 5 hides what that means, because with one number per layer every Jacobian is a single number. This section works out the general case: what the matrices are, in which order they are multiplied, and why backpropagation never actually builds them.
 
-#### 6.1 What a Jacobian is
+### 6.1 What a Jacobian is
 
 A function $f: \mathbb{R}^n \to \mathbb{R}^m$ takes $n$ numbers and returns $m$. Its **Jacobian** at a point $x$ is the $m \times n$ matrix of all partial derivatives:
 
@@ -261,7 +261,7 @@ This is the same statement as "derivative = slope", one dimension up. The specia
 
 Two Jacobians belong to every layer $x^{(d)} = f^{(d)}(x^{(d-1)}; w_d)$, because the layer has two kinds of input: one with respect to its input activations, $J_{f^{(d)}\mid x}$, and one with respect to its parameters, $J_{f^{(d)}\mid w}$. These are the two products in the book's Figure 3.3, and the two local derivatives in steps 4 and 5 of the tiny example.
 
-#### 6.2 The chain rule is a product of Jacobians
+### 6.2 The chain rule is a product of Jacobians
 
 If $h = g(x)$ and $y = f(h)$, then
 
@@ -285,7 +285,7 @@ Every layer's product starts with the same prefix $J_L\, J_{f^{(D)}} \cdots$; th
 
 The tiny example was this product with every factor $1 \times 1$: $\partial\ell/\partial w_1 = 8 \cdot 4 \cdot 2 = 64$, where 8 is the Jacobian of the loss with respect to $y$, 4 is the Jacobian of $y = w_2 h$ with respect to $h$, and 2 is the Jacobian of $h = w_1 x$ with respect to its parameter $w_1$.
 
-#### 6.3 Which end to start from: forward and reverse mode
+### 6.3 Which end to start from: forward and reverse mode
 
 Matrix multiplication is associative, so the chain can be multiplied in any order. The result is the same; the cost is not.
 
@@ -302,7 +302,7 @@ Right to left is **forward mode**. In practice it is run as a **Jacobian-vector 
 
 The rule that falls out: **reverse mode wins when there are many inputs and few outputs; forward mode wins in the opposite case.** Training has millions or billions of inputs (the parameters) and one output (the loss), the extreme case for reverse mode. The price is the one section 6.2 named: reverse mode visits the layers in the opposite order from the forward pass, so every activation must be stored until the backward pass reaches its layer.
 
-#### 6.4 Rows or columns: why Figure 3.3 says $J^\top$
+### 6.4 Rows or columns: why Figure 3.3 says $J^\top$
 
 The book's text says the gradient is "multiplied by the Jacobian", but its Figure 3.3 shows $J^\top$. Both are right; they use two conventions for the same numbers.
 
@@ -314,7 +314,7 @@ So, in column form, a backward step multiplies by the **transposed** Jacobian. I
 
 From here on, gradients are columns, and $\nabla_v$ is short for $\nabla \ell_{\mid v}$, the gradient of the loss with respect to $v$.
 
-#### 6.5 Never build the matrix: the Jacobians of real layers
+### 6.5 Never build the matrix: the Jacobians of real layers
 
 Reverse mode needs only vector-Jacobian products, and for real layers those can be computed without forming the Jacobian at all. Forming it would often be absurd. The three cases below are all that the network of section 6.6 needs, and most other layers are variations of them. To keep $y$ for the class, as the book does, layer outputs are called $z$ and $a$.
 
@@ -351,7 +351,7 @@ $$\nabla_f = J^\top \nabla_p = \big(\operatorname{diag}(p) - p\,p^\top\big)\left
 
 The first product picks $-p_y/p_y = -1$ in component $y$; the second gives $p \cdot (p_y / p_y) = p$. All the divisions by $p_y$ cancel, and what remains is section 3's "predicted minus target". This is why libraries fuse softmax and cross-entropy into one operation: the combined gradient is simpler and numerically safer than either part on its own.
 
-#### 6.6 A worked example you can follow by hand
+### 6.6 A worked example you can follow by hand
 
 A small network, with integer weights so that every number can be checked on paper: 3 inputs, a linear layer to 4 units, ReLU, a linear layer to 3 logits, softmax and cross-entropy. No biases.
 
@@ -419,7 +419,7 @@ print(g_x.round(3))   # [ 0.87  -0.006 -0.876]
 
 The full check script, offered in the download box, also nudges every input and every weight by $10^{-6}$ and recomputes the loss: the finite differences agree with backpropagation to within $10^{-9}$.
 
-#### 6.7 Vanishing and exploding gradients, in Jacobian terms
+### 6.7 Vanishing and exploding gradients, in Jacobian terms
 
 In column form, the gradient at layer $d$ is the loss gradient multiplied by every transposed Jacobian above it:
 
@@ -431,7 +431,7 @@ The book (§3.4, "Vanishing gradient") points out that the cure was to change th
 
 For the exploding case there is also an optimizer-side patch, which the book mentions as well: **gradient clipping** rescales the gradient when its norm exceeds a threshold, so a single bad step cannot wreck the weights.
 
-#### 6.8 Summary
+### 6.8 Summary
 
 - A Jacobian is the matrix of partial derivatives of a function with many inputs and many outputs: one row per output, one column per input. It is the best linear approximation of the function near a point.
 - The chain rule says that the Jacobian of a composition is the product of the Jacobians, so the gradient of the loss with respect to anything is a product of Jacobians, each evaluated at the activations of the forward pass.

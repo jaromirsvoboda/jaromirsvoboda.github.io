@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily GoatCounter retention and seven-day backup
+
+[Timer]
+OnCalendar=*-*-* 03:20:00 UTC
+Persistent=true
+Unit=goatcounter-maintenance.service
+
+[Install]
+WantedBy=timers.target

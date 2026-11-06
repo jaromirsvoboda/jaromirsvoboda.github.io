@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jaromirsvoboda.github.io/sitemap.xml
