@@ -164,6 +164,11 @@ def main():
         if '<math display="block"' in html:
             html = re.sub(r'(<math display="block".*?</math>)',
                          r'<div class="mathwrap">\1</div>', html, flags=re.S)
+        # A list item whose only content is an equation must scroll like block
+        # math instead of widening the page (320 px reflow, U9).
+        html = re.sub(r'<li>\s*<math display="inline"([^>]*)>(.*?)</math>\s*</li>',
+                      r'<li><div class="mathwrap"><math display="block"\1>\2</math></div></li>',
+                      html, flags=re.S)
         path.write_text(html, encoding="utf-8")
         images += page.images
         headers += page.headers

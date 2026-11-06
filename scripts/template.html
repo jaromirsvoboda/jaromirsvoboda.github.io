@@ -56,6 +56,8 @@ figure { margin: 1.6rem 0; }
 figure img, p > img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
 figcaption { font-size: .9em; color: var(--muted); font-style: italic; margin-top: .5rem; }
 code { font-size: .9em; }
+pre { overflow-x: auto; }
+a[href^="http"] { overflow-wrap: anywhere; }
 .downloads { background: var(--box); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; margin: 0 0 1.8rem;
              font: 15px/1.5 system-ui, sans-serif; }
 .downloads strong { display: block; margin-bottom: .3rem; }
@@ -103,6 +105,7 @@ nav.pager small { display: block; color: var(--muted); }
 .term-index { column-width: 16rem; column-gap: 2rem; font-size: .95em; }
 .term-index p { margin: 0 0 .35rem; break-inside: avoid; }
 .mathwrap { overflow-x: auto; overflow-y: hidden; max-width: 100%; padding: .2rem 0; }
+.math-scroll { display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
 footer { font: 14px/1.5 system-ui, sans-serif; color: var(--muted); border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 1rem; }
 </style>
 <script>
@@ -178,24 +181,63 @@ $if(license)$<p>$license$</p>$endif$
 })();
 </script>
 <script>
-/* Scrollable equations need an explicit focus target (WCAG 2.1.1); only mark the
-   ones that actually scroll, and unmark them again when they stop. The overflow
-   scroller is the .mathwrap div (role=region is not allowed on <math>). */
+/* Scrollable equations, code blocks and tables need an explicit focus target
+   (WCAG 2.1.1); only mark the ones that actually scroll, and unmark them again
+   when they stop. The overflow scroller for block math is the .mathwrap div
+   (role=region is not allowed on <math>); for pre and table the element itself
+   scrolls. An inline equation wider than its container becomes a scrollable
+   inline box (.math-scroll) instead of widening the page. */
 (function () {
-  function mark() {
-    document.querySelectorAll('.mathwrap').forEach(function (m, i) {
-      if (m.scrollWidth > m.clientWidth + 1) {
-        if (m.getAttribute("tabindex") !== "0") {
-          m.setAttribute("tabindex", "0");
-          m.setAttribute("role", "region");
-          m.setAttribute("aria-label", "Equation " + (i + 1) + ", scrollable");
-        }
-      } else if (m.getAttribute("tabindex") === "0") {
-        m.removeAttribute("tabindex");
-        m.removeAttribute("role");
-        m.removeAttribute("aria-label");
+  function markScrollable(el, i, kind) {
+    if (el.scrollWidth > el.clientWidth + 1) {
+      if (el.getAttribute("tabindex") !== "0") {
+        el.setAttribute("tabindex", "0");
+        el.setAttribute("role", "region");
+        el.setAttribute("aria-label", kind + " " + (i + 1) + ", scrollable");
+      }
+    } else if (el.getAttribute("tabindex") === "0") {
+      el.removeAttribute("tabindex");
+      el.removeAttribute("role");
+      el.removeAttribute("aria-label");
+    }
+  }
+  function markInlineMath() {
+    var i = 0;
+    document.querySelectorAll('math[display="inline"]').forEach(function (m) {
+      if (m.closest(".mathwrap")) return;
+      i++;
+      var box = m.closest("p, li, div") || document.body;
+      var wide = m.getBoundingClientRect().width > box.clientWidth + 2;
+      var span = m.parentNode && m.parentNode.className === "math-scroll" ? m.parentNode : null;
+      if (wide && !span) {
+        // Wrap the equation in a scrollable span (role=region is not allowed
+        // on <math> itself, hence the wrapper, as with .mathwrap).
+        span = document.createElement("span");
+        span.className = "math-scroll";
+        m.parentNode.insertBefore(span, m);
+        span.appendChild(m);
+      } else if (!wide && span) {
+        m.parentNode.insertBefore(m, span);
+        span.remove();
+      }
+      if (span && span.getAttribute("tabindex") !== "0") {
+        span.setAttribute("tabindex", "0");
+        span.setAttribute("role", "region");
+        span.setAttribute("aria-label", "Equation " + i + ", scrollable");
       }
     });
+  }
+  function mark() {
+    document.querySelectorAll('.mathwrap').forEach(function (m, i) {
+      markScrollable(m, i, "Equation");
+    });
+    document.querySelectorAll('pre').forEach(function (p, i) {
+      markScrollable(p, i, "Code block");
+    });
+    document.querySelectorAll('table').forEach(function (t, i) {
+      markScrollable(t, i, "Table");
+    });
+    markInlineMath();
   }
   mark();
   window.addEventListener("resize", mark);
