@@ -20,7 +20,7 @@ section_index() {  # <folder> <title> <intro>
   meta=$(mktemp)
   printf '%s' '$date$	$title$	$if(lang)$$lang$$else$en$endif$	$summary$' > "$meta"
   {
-    printf -- '---\ntitle: %s\npagetitle: %s\ncrumbs:\n  href: ../index.html\n  label: Home\n---\n\n' "$2" "$2"
+    printf -- '---\ntitle: %s\npagetitle: %s\nsummary: "%s"\ncrumbs:\n  href: ../index.html\n  label: Home\n---\n\n' "$2" "$2" "$3"
     printf '%s\n\n' "$3"
     printf '<ul class="library">\n'
     for doc in "$dir"/*/index.md; do
